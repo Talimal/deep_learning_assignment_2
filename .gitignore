@@ -1,0 +1,7 @@
+*.jpg
+.venv
+.ipynb_checkpoints
+.pyc
+*.docx
+*.txt
+._pycache__
