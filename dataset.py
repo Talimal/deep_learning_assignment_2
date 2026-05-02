@@ -1,6 +1,8 @@
 import torch
 from torchvision import transforms
 from PIL import Image
+from torch.utils.data import DataLoader, Subset
+
 
 
 class LFWPairsDataset(torch.utils.data.Dataset):
@@ -51,3 +53,51 @@ class LFWPairsDataset(torch.utils.data.Dataset):
             img2 = self.transform(img2)
         label = torch.tensor([label], dtype=torch.float32)
         return img1, img2, label
+
+
+def init_loaders(images_root, pairs_file, test_pairs_file,
+                 batch_size, train_epochs):
+
+    train_dataset = LFWPairsDataset(
+        pairs_file=pairs_file,
+        images_root=images_root
+    )
+    train_loader = DataLoader(
+        train_dataset,
+        batch_size=batch_size,
+        shuffle=True
+    )
+
+    test_dataset = LFWPairsDataset(
+        pairs_file=test_pairs_file,
+        images_root=images_root
+    )
+
+    test_loader = DataLoader(
+        test_dataset,
+        batch_size=batch_size,
+        shuffle=False,
+        num_workers=2
+    )
+
+    return train_loader, test_loader
+
+
+def make_balanced_subset(dataset, n_per_class=32):
+    zeros = []
+    ones = []
+
+    for i in range(len(dataset)):
+        _, _, y = dataset[i]
+        y = int(y)
+
+        if y == 0 and len(zeros) < n_per_class:
+            zeros.append(i)
+        elif y == 1 and len(ones) < n_per_class:
+            ones.append(i)
+
+        if len(zeros) >= n_per_class and len(ones) >= n_per_class:
+            break
+
+    indices = zeros + ones
+    return Subset(dataset, indices)
