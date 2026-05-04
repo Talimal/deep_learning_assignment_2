@@ -31,10 +31,10 @@ class KochNet(nn.Module):
         
         self.fc = nn.Sequential(
             nn.Flatten(),
-            # Reduced from 4096 to 1024 to match ResNet-18 parameter constraints
-            nn.Linear(256 * 6 * 6, 1024),
+            # Reverted to 4096 to match the original paper architecture
+            nn.Linear(256 * 6 * 6, 4096),
             nn.Sigmoid(),
-            nn.Linear(1024, embedding_dim)
+            nn.Linear(4096, embedding_dim)
         )
 
     def forward(self, x):
