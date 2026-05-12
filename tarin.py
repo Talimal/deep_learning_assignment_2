@@ -9,14 +9,13 @@ import itertools
 import random
 import numpy as np
 
-# Seed for reproducibility
-SEED = 42
-random.seed(SEED)
-np.random.seed(SEED)
-torch.manual_seed(SEED)
-torch.cuda.manual_seed_all(SEED)
-torch.backends.cudnn.deterministic = True
-torch.backends.cudnn.benchmark = False
+def set_seed(seed):
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
 
 from dataset import LFWVerificationDataset
 from models import KochNet, SiameseNetwork
@@ -80,6 +79,9 @@ def train_model(config, args, train_dataset, test_dataset, device):
         criterion = TripletLoss(margin=config['margin'])
 
     optimizer = torch.optim.Adam(model.parameters(), lr=config['lr'])
+    
+    import time
+    start_time = time.time()
     
     train_loss_history, val_loss_history, val_acc_history = [], [], []
     best_val_acc = 0.0
@@ -147,14 +149,17 @@ def train_model(config, args, train_dataset, test_dataset, device):
             best_val_acc = val_acc
             best_model_state = model.state_dict()
 
-    return best_val_acc, best_model_state, train_loss_history, val_loss_history, val_acc_history
+    wall_time = time.time() - start_time
+    return best_val_acc, best_model_state, train_loss_history, val_loss_history, val_acc_history, wall_time
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Train Siamese Network")
     parser.add_argument('--loss', type=str, required=True, choices=['bce', 'contrastive', 'triplet'], 
                         help="Choose the loss function to train with.")
     parser.add_argument('--optimize', action='store_true', help="Run hyperparameter optimization")
+    parser.add_argument('--seed', type=int, default=42, help="Random seed for tracking mean±std")
     args = parser.parse_args()
+    set_seed(args.seed)
 
     images_root = "lfw2"
     pairs_file = "pairsDevTrain.txt"
@@ -192,7 +197,7 @@ if __name__ == "__main__":
             }
             print(f"Trial {idx+1}/{len(configs)} - Config: {{'batch_size': {bs}, 'lr': {lr}, 'margin': {margin}}}")
             
-            val_acc, _, _, val_loss_hist, val_acc_hist = train_model(config, args, train_dataset, test_dataset, device)
+            val_acc, _, _, val_loss_hist, val_acc_hist, _ = train_model(config, args, train_dataset, test_dataset, device)
             print(f"  -> Validation Acc: {val_acc:.4f}, Validation Loss: {val_loss_hist[-1]:.4f}")
             
             if val_acc > best_overall_val_acc:
@@ -209,7 +214,7 @@ if __name__ == "__main__":
         print("Training full model with best config...")
         best_config['epochs'] = 10 # Train for full epochs
         best_config['is_optimization'] = False
-        val_acc, best_model_state, train_loss_history, val_loss_history, val_acc_history = train_model(best_config, args, train_dataset, test_dataset, device)
+        val_acc, best_model_state, train_loss_history, val_loss_history, val_acc_history, wall_time = train_model(best_config, args, train_dataset, test_dataset, device)
         
     else:
         # Default run: load from best_config if it exists
@@ -230,15 +235,17 @@ if __name__ == "__main__":
                 'epochs': 10,
                 'is_optimization': False
             }
-        val_acc, best_model_state, train_loss_history, val_loss_history, val_acc_history = train_model(config, args, train_dataset, test_dataset, device)
+        val_acc, best_model_state, train_loss_history, val_loss_history, val_acc_history, wall_time = train_model(config, args, train_dataset, test_dataset, device)
 
-    torch.save(best_model_state, f"kochnet_{args.loss}.pth")
+    suffix = f"_{args.seed}"
+    torch.save(best_model_state, f"kochnet_{args.loss}{suffix}.pth")
     
-    with open(f"history_{args.loss}.json", "w") as f:
+    with open(f"history_{args.loss}{suffix}.json", "w") as f:
         json.dump({
             "train_loss": train_loss_history, 
             "val_loss": val_loss_history,
-            "val_acc": val_acc_history 
+            "val_acc": val_acc_history,
+            "wall_time": wall_time
         }, f)
         
-    print(f"Done! Saved kochnet_{args.loss}.pth and history_{args.loss}.json")
+    print(f"Done! Saved kochnet_{args.loss}{suffix}.pth and history_{args.loss}{suffix}.json")
