@@ -67,7 +67,7 @@ def main():
             dataset=wrapped_dataset, 
             device=device, 
             model_name="Best_Model_Contrastive", 
-            n_identities=30, 
+            n_identities=20, 
             method="tsne"
         )
         print("Done. Check the 'results' folder for the saved plots.")
