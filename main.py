@@ -2,7 +2,7 @@ from models import *
 from dataset import *
 from evaluation import *
 import torch
-torch.backends.cudnn.enabled = False
+torch.backends.cudnn.enabled = True
 torch.backends.cudnn.benchmark = False
 torch.backends.cudnn.deterministic = True
 

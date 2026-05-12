@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 from torchvision.models import resnet18, ResNet18_Weights
+import torch.nn.functional as F
 
 
 # TODO: understand what are the dimensions for the backbone and why
@@ -57,9 +58,10 @@ class SiameseNetwork(nn.Module):
     def forward(self, x1, x2):
         emb1 = self.cnn(x1)
         emb2 = self.cnn(x2)
-        diff = torch.abs(emb1 - emb2)
-        prob = self.fc(diff)
-        return torch.sigmoid(prob)
+        # diff = torch.abs(emb1 - emb2)
+        # prob = self.fc(diff)
+        # return torch.sigmoid(prob)
+        return emb1, emb2
     
 
 class SiameseNetworkResnet(nn.Module):
@@ -93,7 +95,38 @@ class SiameseNetworkResnet(nn.Module):
             x2 = x2.repeat(1, 3, 1, 1)
         emb1 = self.resnet(x1)
         emb2 = self.resnet(x2)
-        diff = torch.abs(emb1 - emb2)
-        prob = self.fc(diff)
-        return torch.sigmoid(prob)
+        # diff = torch.abs(emb1 - emb2)
+        # prob = self.fc(diff)
+        # return torch.sigmoid(prob)
+        return emb1, emb2
 
+
+class ContrastiveLoss(nn.Module):
+    def __init__(self, margin=1.0):
+        super().__init__()
+        self.margin = margin
+
+    def forward(self, emb1, emb2, label):
+        # label: 1 = same person, 0 = different
+        dist = F.pairwise_distance(emb1, emb2, p=2)
+        same = label * dist.pow(2)
+        diff = (1 - label) * F.relu(self.margin - dist).pow(2)
+        # loss = 0.5 * (same + diff).mean()
+        loss = (same + diff).mean()
+        return loss, dist
+    
+
+class EarlyStopping:
+    def __init__(self, patience=5, min_delta=1e-3):
+        self.patience = patience
+        self.min_delta = min_delta
+        self.counter = 0
+        self.best_loss = float("inf")
+
+    def step(self, val_loss):
+        if val_loss < self.best_loss - self.min_delta:
+            self.best_loss = val_loss
+            self.counter = 0
+            return False
+        self.counter += 1
+        return self.counter >= self.patience

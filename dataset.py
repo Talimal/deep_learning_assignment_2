@@ -1,8 +1,15 @@
 import torch
 from torchvision import transforms
 from PIL import Image
-from torch.utils.data import DataLoader, Subset
+from torch.utils.data import DataLoader, Subset, random_split
+import numpy as np
+import constants
 
+
+
+images_root = "data/lfwa/lfw2/lfw2"
+pairs_file = "pairsDevTrain.txt"
+test_pairs_file = "pairsDevTest.txt"
 
 
 class LFWPairsDataset(torch.utils.data.Dataset):
@@ -55,8 +62,9 @@ class LFWPairsDataset(torch.utils.data.Dataset):
         return img1, img2, label
 
 
+
 def init_loaders(images_root, pairs_file, test_pairs_file,
-                 batch_size, train_epochs):
+                 batch_size):
 
     train_dataset = LFWPairsDataset(
         pairs_file=pairs_file,
@@ -73,14 +81,20 @@ def init_loaders(images_root, pairs_file, test_pairs_file,
         images_root=images_root
     )
 
-    test_loader = DataLoader(
-        test_dataset,
-        batch_size=batch_size,
-        shuffle=False,
-        num_workers=2
+    n = len(test_dataset)
+    val_size = int(0.2 * n)
+    test_size = n - val_size
+    val_dataset, test_dataset = random_split(
+        test_dataset, [val_size, test_size],
+        generator=torch.Generator().manual_seed(constants.SEED)
     )
 
-    return train_loader, test_loader
+    val_loader = DataLoader(val_dataset, batch_size=batch_size,
+                            shuffle=False, num_workers=2)
+    test_loader = DataLoader(test_dataset, batch_size=batch_size,
+                             shuffle=False, num_workers=2)
+
+    return train_loader, val_loader, test_loader
 
 
 def make_balanced_subset(dataset, n_per_class=32):
@@ -101,3 +115,72 @@ def make_balanced_subset(dataset, n_per_class=32):
 
     indices = zeros + ones
     return Subset(dataset, indices)
+
+
+
+def build_loaders(batch_size):
+    train_loader, val_loader, test_loader = init_loaders(
+        images_root=images_root,
+        pairs_file=pairs_file,
+        test_pairs_file=test_pairs_file,
+        batch_size=batch_size,
+    )
+    train_subset = train_loader.dataset
+    val_subset = val_loader.dataset
+    train_loader = DataLoader(train_subset, batch_size=batch_size, shuffle=True,  num_workers=0)
+    val_loader   = DataLoader(val_subset,   batch_size=batch_size, shuffle=False, num_workers=0)
+    test_loader  = DataLoader(test_loader.dataset, batch_size=batch_size, shuffle=False, num_workers=0)
+
+    return train_loader, val_loader, test_loader
+
+
+def generate_oneshot_episodes(dataset, N, num_episodes):
+    """
+    Each episode: 1 query image + N candidates (1 correct match + N-1 distractors)
+    Returns list of (query_path, correct_path, [distractor_paths], correct_position)
+    """
+    rng = np.random.RandomState(constants.SEED)
+
+    # build identity -> list of image paths
+    identity_to_images = {}
+    
+    # handle Subset wrapping
+    base_dataset = dataset.dataset if isinstance(dataset, Subset) else dataset
+    indices = dataset.indices if isinstance(dataset, Subset) else range(len(base_dataset))
+    
+    for real_idx in indices:
+        img1_path, img2_path, label = base_dataset.images_list[real_idx]
+        identity1 = img1_path.split("/")[0]
+        identity2 = img2_path.split("/")[0]
+        identity_to_images.setdefault(identity1, set()).add(img1_path)
+        identity_to_images.setdefault(identity2, set()).add(img2_path)
+
+    # convert sets to sorted lists for reproducibility
+    identity_to_images = {k: sorted(v) for k, v in identity_to_images.items()
+                          if len(v) >= 2}  # need at least 2 images per identity
+    identities = list(identity_to_images.keys())
+
+    episodes = []
+    for _ in range(num_episodes):
+        # pick query identity — must have >= 2 images
+        query_identity = rng.choice(identities)
+        query_img, correct_img = rng.choice(
+            identity_to_images[query_identity], size=2, replace=False
+        )
+
+        # pick N-1 distractor identities
+        other_identities = [i for i in identities if i != query_identity]
+        distractor_identities = rng.choice(other_identities, size=N-1, replace=False)
+        distractors = [rng.choice(identity_to_images[i]) for i in distractor_identities]
+
+        # place correct match at random position among N candidates
+        correct_pos = rng.randint(0, N)
+        candidates = distractors[:correct_pos] + [correct_img] + distractors[correct_pos:]
+
+        episodes.append({
+            "query": query_img,
+            "candidates": candidates,
+            "correct_pos": correct_pos,
+        })
+
+    return episodes
