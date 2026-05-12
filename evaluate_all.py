@@ -60,7 +60,7 @@ def generate_oneshot_episodes(dataset, N, num_episodes=400, seed=42):
 
 
 def main():
-    device = torch.device("cpu")
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
 
     images_root = "lfw2"

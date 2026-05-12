@@ -4,6 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 class Constants:
     SEED = 42
+    RESULTS_PATH = "results"
     HYPERPARAM_GRID = {}
 constants = Constants()
 from scipy.stats import ttest_ind, mannwhitneyu

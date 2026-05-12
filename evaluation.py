@@ -286,8 +286,8 @@ def evaluate_oneshot(model, dataset, episodes, N, device, similarity="l2"):
     correct = 0
     predicted_positions = []
 
-    base_dataset = dataset.dataset
-    images_root = base_dataset.images_root
+    base_dataset = getattr(dataset, "dataset", dataset)
+    images_root = base_dataset.image_dir_root
     transform = base_dataset.transform
 
     def load_image(img_path):
