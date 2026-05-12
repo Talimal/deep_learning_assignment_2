@@ -35,10 +35,10 @@ def plot_embedding_projection(model, dataset, device, model_name,
                 emb2, _ = model(x2, x2)
                 identity_to_data.setdefault(identity2, {})[img2_path] = emb2.cpu().detach().numpy()
 
-    # convert to list format
+    
     identity_to_embeddings = {k: list(v.values()) for k, v in identity_to_data.items()}
 
-    # filter and sample
+    
     eligible = [k for k, v in identity_to_embeddings.items() if len(v) >= samples_per_identity]
     chosen_ids = list(np.random.RandomState(constants.SEED).choice(
         sorted(eligible),
@@ -56,14 +56,9 @@ def plot_embedding_projection(model, dataset, device, model_name,
     embeddings_matrix = np.vstack(filtered_embeddings)
 
     # project to 2D
-    if method == "tsne":
-        projector = TSNE(n_components=2, random_state=constants.SEED, perplexity=3)
-        projected = projector.fit_transform(embeddings_matrix)
-    elif method == "umap":
-        projector = umap.UMAP(n_components=2, random_state=constants.SEED)
-        projected = projector.fit_transform(embeddings_matrix)
+    projector = umap.UMAP(n_components=2, random_state=constants.SEED)
+    projected = projector.fit_transform(embeddings_matrix)
 
-    # plot
     unique_ids = list(dict.fromkeys(filtered_ids))
     colors = plt.cm.tab20(np.linspace(0, 1, len(unique_ids)))
     id_to_color = {uid: colors[i] for i, uid in enumerate(unique_ids)}
@@ -136,7 +131,6 @@ def statistical_tests(inter, intra, model_name, method):
     print(f"T-test t_stat:        {t_stat:.6e}")
     print(f"Mann-Whitney u_stat:  {u_stat:.6e}")
 
-    # ---------- Plot distributions ----------
 
     plt.figure(figsize=(10, 6))
 
@@ -173,9 +167,6 @@ def statistical_tests(inter, intra, model_name, method):
     return intra, inter
 
 
-
-
-# plotting---------------------------------------------------------------------------
 
 def plot_history(history, model_name):
     os.makedirs(constants.RESULTS_PATH, exist_ok=True)
@@ -218,10 +209,6 @@ def plot_all_rocs(results_dict, title):
 
 
 def plot_oneshot_results(results_dict):
-    """
-    results_dict: {model_name: {2: acc, 5: acc, 20: acc}}
-    """
-
     models = list(results_dict.keys())
     N_values = [2, 5, 20]
     n_models = len(models)

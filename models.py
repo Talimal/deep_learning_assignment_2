@@ -4,7 +4,6 @@ from torchvision.models import resnet18, ResNet18_Weights
 import torch.nn.functional as F
 
 
-# TODO: understand what are the dimensions for the backbone and why
 class BaselineCNN(nn.Module):
     def __init__(self, output_units=1024):
         super().__init__()
@@ -14,24 +13,28 @@ class BaselineCNN(nn.Module):
                             out_channels=64,
                             kernel_size=10
                         ),
+                        nn.ReLU(),
                         nn.MaxPool2d(kernel_size=2),
                         nn.Conv2d(
                             in_channels=64,
                             out_channels=128,
                             kernel_size=7
                         ),
+                        nn.ReLU(),
                         nn.MaxPool2d(kernel_size=2),
                         nn.Conv2d(
                             in_channels=128,
                             out_channels=128,
                             kernel_size=4
                         ),
+                        nn.ReLU(),
                         nn.MaxPool2d(kernel_size=2),
                         nn.Conv2d(
                             in_channels=128,
                             out_channels=256,
                             kernel_size=4
                         ),
+                        nn.ReLU(),
             )
         self.fc = nn.Sequential(
             nn.Flatten(),
@@ -95,9 +98,6 @@ class SiameseNetworkResnet(nn.Module):
             x2 = x2.repeat(1, 3, 1, 1)
         emb1 = self.resnet(x1)
         emb2 = self.resnet(x2)
-        # diff = torch.abs(emb1 - emb2)
-        # prob = self.fc(diff)
-        # return torch.sigmoid(prob)
         return emb1, emb2
 
 
@@ -111,7 +111,6 @@ class ContrastiveLoss(nn.Module):
         dist = F.pairwise_distance(emb1, emb2, p=2)
         same = label * dist.pow(2)
         diff = (1 - label) * F.relu(self.margin - dist).pow(2)
-        # loss = 0.5 * (same + diff).mean()
         loss = (same + diff).mean()
         return loss, dist
     

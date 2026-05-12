@@ -64,7 +64,7 @@ def run_with_hyperparam_search(model_class, model_name, device, similarity="l2")
     best_params, best_threshold = hyperparam_search(
         model_class=model_class,
         model_name=model_name,
-        model_kwargs={"output_units": 256, "weights": "pretrained" if "pretrained" in model_name else None},
+        model_kwargs={"output_units": 256},
         device=device,
         train_epochs=constants.TRAIN_EPOCHS,
         similarity=similarity
@@ -84,33 +84,33 @@ if __name__ == "__main__":
 
     # Iteration 1 for hyperparameters search:
 
-    # koch_model, koch_history, koch_val, koch_test = run_with_hyperparam_search(SiameseNetwork,
-    #                                                                            "Koch",
-    #                                                                            device=device)
-    # resnet_model, resnet_history, resnet_val, resnet_test = run_with_hyperparam_search(SiameseNetworkResnet, 
-    #                                                                                    "ResNet18",
-    #                                                                                    device=device)
+    koch_model, koch_history, koch_val, koch_test = run_with_hyperparam_search(SiameseNetwork,
+                                                                               "Koch",
+                                                                               device=device)
+    resnet_model, resnet_history, resnet_val, resnet_test = run_with_hyperparam_search(SiameseNetworkResnet, 
+                                                                                       "ResNet18",
+                                                                                       device=device)
 
     # Iteration 2 for running with best params and getting plots:
 
-    # koch_model, koch_history, koch_val, koch_test = run_experiment(SiameseNetwork, "Koch",
-    #                       lr=0.0001,
-    #                       best_threshold=0.5051,
-    #                       margin=2.0,
-    #                       batch_size=16,
-    #                       device=device)
-    # resnet_model, resnet_history, resnet_val, resnet_test = run_experiment(SiameseNetworkResnet, "ResNet18",
-    #                       lr=0.01,
-    #                       best_threshold=0.7172,
-    #                       margin=1.0,
-    #                       batch_size=4, 
-    #                       device=device)
-    # plot_history(koch_history, model_name="Koch")      
-    # plot_history(resnet_history, model_name="ResNet18")                                                                          
-    # plot_all_rocs({
-    #     "Koch_test":   koch_test,
-    #     "ResNet18_test": resnet_test,
-    # }, title="Koch VS ResNet18 ROC")
+    koch_model, koch_history, koch_val, koch_test = run_experiment(SiameseNetwork, "Koch",
+                          lr=0.0001,
+                          best_threshold=0.6162,
+                          margin=2.0,
+                          batch_size=16,
+                          device=device)
+    resnet_model, resnet_history, resnet_val, resnet_test = run_experiment(SiameseNetworkResnet, "ResNet18",
+                          lr=0.01,
+                          best_threshold=0.7172,
+                          margin=1.0,
+                          batch_size=4, 
+                          device=device)
+    plot_history(koch_history, model_name="Koch")      
+    plot_history(resnet_history, model_name="ResNet18")                                                                          
+    plot_all_rocs({
+        "Koch_test":   koch_test,
+        "ResNet18_test": resnet_test,
+    }, title="Koch VS ResNet18 ROC")
 
     # Iteration 3: pick the best model and run with another 2 seeds (change in constants)
     # resnet_model, resnet_history, resnet_val, resnet_test = run_experiment(SiameseNetworkResnet, 

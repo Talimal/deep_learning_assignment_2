@@ -122,12 +122,6 @@ def train(model, train_epochs, train_loader, val_loader,
           criterion, optimizer, device, model_name, 
           best_threshold=1.0, patience=5):
     os.makedirs(model_name, exist_ok=True)
-    model_weights_path = f"{model_name}/weights_SEED={constants.SEED}.pth"
-    # if os.path.exists(model_weights_path):
-    #     with open(f"{model_name}/history_wall_time_SEED={constants.SEED}.json") as f:
-    #         history_wall_time = json.load(f)
-    #         model.load_state_dict(torch.load(model_weights_path))
-    #         return history_wall_time['history'], history_wall_time['wall_time']
 
     early_stopping = EarlyStopping(patience=patience)
 

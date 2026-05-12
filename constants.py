@@ -8,6 +8,3 @@ HYPERPARAM_GRID = {
 }
 
 TRAIN_EPOCHS = 20
-
-# Koch best:
-# {'lr': 0.0001, 'margin': 1.0} | Val acc: 0.6800
